@@ -1,9 +1,8 @@
 import mysql.connector
 from dotenv import load_dotenv
 import os
-cmd='''CREATE TABLE products(Id INT AUTO_INCREMENT PRIMARY KEY, Name VARCHAR(255), Price FLOAT, ImgUrl MEDIUMTEXT, Quantity INT)
-CREATE TABLE orders(OrderId int AUTO_INCREMENT PRIMARY KEY, Deliver int, Paid int, Collected int)
-CREATE TABLE orderItems(OrderId int, ProductId int, Quantity int)'''
+cmd='''CREATE TABLE sensor_data(timestamp DateTime, water_level FLOAT, moisture_level FLOAT, light_level FLOAT, temperature FLOAT, humidity FLOAT, light_status BOOL, pump_status BOOL)
+CREATE TABLE settings(light_tresh FLOAT, water_tresh FLOAT)'''
 load_dotenv()
 dbuser=os.getenv("DBUSER")
 dbhost=os.getenv("DBHOST")
@@ -16,15 +15,15 @@ mydb=mysql.connector.connect(
 )
 mycursor = mydb.cursor()
 try:
-    mycursor.execute("DROP DATABASE supermarket")
+    mycursor.execute("DROP DATABASE MAPP")
 except:
     pass
-mycursor.execute("CREATE DATABASE supermarket")
+mycursor.execute("CREATE DATABASE MAPP")
 mydb=mysql.connector.connect(
 	host=dbhost,
 	user=dbuser,
 	password=dbpw,
-    db="supermarket"
+    db="MAPP"
 )
 mycursor = mydb.cursor()
 for text in cmd.split("\n"): 

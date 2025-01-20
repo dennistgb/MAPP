@@ -22,7 +22,7 @@ def getdb():
 	host=dbhost,
 	user=dbuser,
 	password=dbpw,
-	db="plantparenting"
+	db="MAPP"
     )
     return db
 
