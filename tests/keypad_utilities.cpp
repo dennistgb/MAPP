@@ -4,6 +4,7 @@
  */
 
 
+#include <cstdio>
 #undef __ARM_FP
 
 #include "mbed.h"
@@ -42,5 +43,46 @@ char getkey(void)
 
     //Look up table to find the key pressed
     return (lookupTable[keycode]);
-    
 }
+
+char getkey_nowait(void)
+{
+    // Optional: set mode as PullUp/PullDown/PullNone/OpenDrain
+    Keypad_Data.mode(PullNone);
+    printf("getting key press\n");
+
+    char keycode = 0;
+    Timer timer;
+
+    timer.start();
+
+    // Wait for key to be pressed or timeout
+    while (Keypad_DA == 0) {
+        if (timer.elapsed_time().count() > 5000000) { // 5 seconds timeout
+            printf("No key pressed within 5 seconds.\n");
+            timer.stop();
+            return 0; // Return 0 or an appropriate value to indicate timeout
+        }
+    }
+
+    // Stop the timer once the key is pressed
+    timer.stop();
+    timer.reset();
+
+    // Read the bus and mask out bits not being used
+    keycode = Keypad_Data & Keypad_Data.mask();
+
+    // Output to COM port for debugging
+    printf("Key pressed: 0x%04X \n", keycode);
+
+    // Wait for key to be released
+    while (Keypad_DA == 1);
+
+    // Look up table to find the key pressed
+    return (lookupTable[keycode]);
+}
+
+
+
+
+
