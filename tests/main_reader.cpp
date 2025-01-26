@@ -9,8 +9,9 @@ using namespace std::chrono;
 #define WAIT_TIME_MS_1 1500
 #define ECHO_TIME_OUT 30ms  // Timeout duration for no object detection
 
-DigitalOut led1(LED1);
-DigitalIn button(PC_13);
+AnalogIn MoistureSensor(PA_4); // moisture sensor analog pin 
+DigitalOut relay(PB_4);      //relay to control water pump
+AnalogIn water_level(PB_0); // water level analog pin
 DigitalOut Trig(PC_5);   // Trigger Pin
 InterruptIn Echo(PC_6);  // Echo Pin with interrupt
 Timer echoTimer;         // Timer to measure duration
@@ -19,6 +20,8 @@ Timeout echoTimeout;     // Timeout handler
 #define DHT11_PIN PD_2
 DHT11 dht11(DHT11_PIN);
 
+float Moist = 0;
+float Water_level = 0;
 float objDistance = 0;
 bool bObjDetected = false;
 
@@ -111,10 +114,18 @@ int get_humidity()
     }
 }
 
+void pump_water()
+{
+    relay = 1;
+    thread_sleep_for(5000);
+    relay = 0;
+}
+
 int main()
 {
     while (1)
     {
+        printf("Reading phase\n");
         // Temperature reading
         int temperature = get_temp();
         if (temperature != -1)
@@ -147,6 +158,19 @@ int main()
         {
             printf("Failed to detect distance.\n");
         }
+
+        Moist = MoistureSensor.read(); 
+        printf("Soil Moisture: %.2f\n", Moist);
+        
+        Water_level = water_level.read(); 
+        printf("Water Level: %.2f\n", Water_level);
+
         thread_sleep_for(1000);
+
+        printf("Correctional phase\n");
+        if (Moist == 3.00) 
+        {
+            pump_water();
+        }
     }
 }
