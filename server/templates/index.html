@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Sensor Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f4; }
+        .container { max-width: 800px; margin: auto; padding: 20px; background: white; border-radius: 8px; }
+        .sensor { padding: 10px; margin: 10px 0; background: #e3f2fd; border-radius: 5px; }
+        .chart-container { width: 100%; height: 300px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Simple Sensor Dashboard</h2>
+        <p>Last Updated: <span id="last-update">Never</span></p>
+
+        <div class="sensor">Water Level: <span id="water">N/A</span></div>
+        <div class="sensor">Moisture Level: <span id="moisture">N/A</span></div>
+        <div class="sensor">Temperature (°C): <span id="temperature">N/A</span></div>
+        <div class="sensor">Humidity (%): <span id="humidity">N/A</span></div>
+        <div class="sensor">Light Level (lux): <span id="light">N/A</span></div>
+        <div class="sensor">Pump Status: <span id="pump">N/A</span></div>
+
+        <div class="chart-container">
+            <canvas id="waterChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let waterChart;
+        const maxPoints = 8;
+        let timestamps = [];
+        let waterLevels = [];
+
+        function initChart() {
+            const ctx = document.getElementById('waterChart').getContext('2d');
+            waterChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [{
+                        label: 'Water Level',
+                        data: waterLevels,
+                        borderColor: 'blue',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Time' } },
+                        y: { title: { display: true, text: 'Water Level' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function fetchData() {
+            fetch('/data?entries=1')
+                .then(response => response.json())
+                .then(updateDashboard(response))
+                .catch(error => console.error("Error fetching data:", error));
+        }
+
+        function updateDashboard(sensorData) {
+            let last = sensorData[0];
+
+            document.getElementById("water").innerText = last.water_level;
+            document.getElementById("moisture").innerText = last.moisture_level;
+            document.getElementById("temperature").innerText = last.temperature;
+            document.getElementById("humidity").innerText = last.humidity;
+            document.getElementById("light").innerText = last.light_level;
+            document.getElementById("pump").innerText = last.pump_status ? "ON" : "OFF";
+            document.getElementById("last-update").innerText = last.timestamp;
+
+            // Update chart data
+            timestamps.push(last.timestamp);
+            waterLevels.push(last.water_level);
+
+            // Remove oldest data if exceeding max points
+            if (timestamps.length > maxPoints) {
+                timestamps.shift();
+                waterLevels.shift();
+            }
+
+            waterChart.update();
+        }
+
+        window.onload = function () {
+            initChart();
+            fetchData(); // Fetch initial data
+            setInterval(fetchData, 10000); // Update every 5 seconds
+        };
+    </script>
+
+</body>
+</html>

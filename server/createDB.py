@@ -26,6 +26,10 @@ mydb=mysql.connector.connect(
     db="MAPP"
 )
 mycursor = mydb.cursor()
+mycursor.execute("SHOW DATABASES")
+for db in mycursor:
+    print(db)
+
 for text in cmd.split("\n"): 
     mycursor.execute(text)
 print("database and fields created")
