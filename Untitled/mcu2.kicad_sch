@@ -1,15 +1,12 @@
-(kicad_sch (version 20230121) (generator eeschema)
-
-  (uuid fbae385a-acb9-4c25-b4b5-0e31b07b8a5e)
-
-  (paper "A4")
-
-  (title_block
-    (title "MCU2")
-    (date "2024-11-23")
-  )
-
-  (lib_symbols
-  )
-
+(kicad_sch
+	(version 20231120)
+	(generator "eeschema")
+	(generator_version "8.0")
+	(uuid "fbae385a-acb9-4c25-b4b5-0e31b07b8a5e")
+	(paper "A4")
+	(title_block
+		(title "MCU2")
+		(date "2024-11-23")
+	)
+	(lib_symbols)
 )
