@@ -72,6 +72,8 @@ float TemperatureThreshhold = 28;
 float DistanceThreshhold = 10;
 float BrightnessThreshhold = 2.2;
 float MoistThreshhold = 0.95;
+float Water_level_Threshhold = 0.3;
+
 
 DigitalOut GrowLight(PA_2);
 DigitalOut relayWaterPump(PA_1);
@@ -507,28 +509,30 @@ int main()
         {
             fan = 0;
         }
-          
-        //If water level too low 
-        if(distance < DistanceThreshhold)
+        if (Water_level<Water_level_Threshhold) 
         {
             bluePin = 0;
             greenPin = 0;
             redPin = 1;
+        } 
+        //If brightness is too low turn on grow light
+        else if (brightness > BrightnessThreshhold)
+        {
+            bluePin = 1;
+            greenPin = 1;
+            redPin = 1;
         }
-        else 
+        else if(distance < DistanceThreshhold)
         {
             bluePin = 0;
             greenPin = 1;
             redPin = 0;
-        }
-        //If brightness is too low turn on grow light
-        if (brightness > BrightnessThreshhold)
-        {
-            GrowLight = 1;
-        }
+        }          
         else 
         {
-            GrowLight = 0;
+            bluePin = 0;
+            greenPin = 0;
+            redPin = 0;
         }
         //If soil moisture too low pump water
         if (Moist < MoistThreshhold) 
@@ -538,3 +542,4 @@ int main()
         printf("b threshold %f", TemperatureThreshhold);
     }
 }
+
