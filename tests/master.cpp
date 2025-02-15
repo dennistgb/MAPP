@@ -5,27 +5,25 @@
 #include "lcd.h"
 #include "keypad.h"
 
-// -------------------------
-// UART to Slave
-// -------------------------
-// Master TX = PB_6, Master RX = PB_7, 9600 baud
+// UART communication
 UnbufferedSerial slave_uart(PB_6, PB_7, 9600);
 
-// Simple helper to send commands to the Slave
+// Keypad & LCD
+extern BusIn Keypad_Data;
+InterruptIn keypad_interrupt(PB_13); // Keypad DA
+
+// Shared state for ISR communication
+volatile bool key_pressed = false;
+volatile unsigned char key;
+
+// UART helper
 void send_command(const char *cmd_str) {
-    // We assume cmd_str ends with no newline; we add one
-    // for the Slave to detect command boundaries easily.
-    char buffer[16];
-    int len = sprintf(buffer, "%s", cmd_str);
+    char buffer[4];
+    int len = sprintf(buffer, "%s\n", cmd_str);
     slave_uart.write(buffer, len);
 }
 
-// -------------------------
-// Keypad & LCD
-// -------------------------
-extern BusIn Keypad_Data;
-InterruptIn keypad_interrupt(PB_13);         // DA pin of the keypad for interrupt
-
+// Key mapping
 const unsigned char lookupTable[] = {
     '1', '2', '3', 'F',
     '4', '5', '6', 'E',
@@ -33,107 +31,91 @@ const unsigned char lookupTable[] = {
     'A', '0', 'B', 'C'
 };
 
-unsigned char key;
+// ISR
+void keypad_ISR() {
+    unsigned char keycode = Keypad_Data & Keypad_Data.mask();
+    key = lookupTable[keycode];
+    key_pressed = true;
+}
 
-void keypad_ISR();
-void display_menu(const char* line1, const char* line2);
-
-// Display two lines on the LCD
+// LCD Helpers
 void display_menu(const char* line1, const char* line2) {
-    printf("im here!");
     lcd_write_cmd(0x01);
-    lcd_write_cmd(0x01);
-    lcd_write_cmd(0x01);
-    lcd_write_cmd(0x01);
-    lcd_write_cmd(0x01);  
-    lcd_write_cmd(0x80);  // Move cursor to line 1 position 1
+    lcd_write_cmd(0x80);
     lcd_write_string(line1);
-    lcd_write_cmd(0xC0);  // Move cursor to line 2 position 1
+    lcd_write_cmd(0xC0);
     lcd_write_string(line2);
 }
 
-int main() {
-    printf("Master Code with Keypad & LCD.\n");
-
-    // Initialize LCD
-    lcd_init();       
-    lcd_Clear();      
-
-    // Configure keypad data pins
-    Keypad_Data.mode(PullNone);
-
-    // Attach interrupt on falling edge of DA pin
-    keypad_interrupt.fall(&keypad_ISR);
-
-    // Show a rotating menu for demonstration
-    while (1) {
-        display_menu("1:Bright Low",   "2:Bright Default");
-        thread_sleep_for(1000);
-
-        display_menu("3:Bright High",  "4:Moist Low");
-        thread_sleep_for(1000);
-
-        display_menu("5:Moist Default","6:Moist High");
-        thread_sleep_for(1000);
-    }
-}
-
-// Keypad Interrupt Service Routine
-void keypad_ISR() {
-    // Read the 4-bit value from the bus (PB_8..PB_11)
-    unsigned char keycode = Keypad_Data & Keypad_Data.mask();
-
-    // Convert the keycode to its corresponding character
-    key = lookupTable[keycode];
-    printf("Key pressed: '%c'\n", key);
-    printf("boomz");
+void display_key_action(char key) {
     lcd_write_cmd(0x01);
-
-    // Clear and display the key info on LCD
-    printf("oopsies");
-    switch (key) 
-    {
+    switch (key) {
         case '1':
-            // "BL" = Brightness Low
-            send_command("BL");
-            lcd_write_string("Brightness Low");
-            printf("Sent command: BL\n");
+            send_command("TL");
+            lcd_write_string("Temperature Low");
             break;
         case '2':
-            // "BD" = Brightness Default
-            send_command("BD");
-            lcd_write_string("Brightness Default");
-            printf("Sent command: BD\n");
+            send_command("TD");
+            lcd_write_string("Temperature Default");
             break;
         case '3':
-            // "BH" = Brightness High
-            send_command("BH");
-            lcd_write_string("Brightness High");
-            printf("Sent command: BH\n");
+            send_command("TH");
+            lcd_write_string("Temperature High");
             break;
         case '4':
-            // "ML" = Moisture Low
             send_command("ML");
             lcd_write_string("Moisture Low");
-            printf("Sent command: ML\n");
             break;
         case '5':
-            // "MD" = Moisture Default
             send_command("MD");
             lcd_write_string("Moisture Default");
-            printf("Sent command: MD\n");
             break;
         case '6':
-            // "MH" = Moisture High
             send_command("MH");
             lcd_write_string("Moisture High");
-            printf("Sent command: MH\n");
             break;
         default:
             lcd_write_string("Invalid Input");
-            printf("Invalid Input\n");
             break;
     }
-    printf("im out!!!");
-    // Pause so user can see the LCD message
+}
+
+int main() {
+    lcd_init();
+    lcd_Clear();
+
+    Keypad_Data.mode(PullNone);
+    keypad_interrupt.fall(&keypad_ISR);
+
+    int menu_index = 0;
+    const char* menus[][2] = {
+        {"1:Temp Low", "2:Temp Default"},
+        {"3:Temp High", "4:Moist Low"},
+        {"5:Moist Default", "6:Moist High"},
+    };
+    const int menu_count = 3;
+
+    while (true) {
+        if (key_pressed) {
+            unsigned char pressed_key = key;  // Read key from ISR
+            key_pressed = false;              // Clear the flag
+
+            display_key_action(pressed_key);  // Show selected action on LCD
+            thread_sleep_for(2000);           // Let the user see the result
+        } else {
+            display_menu(menus[menu_index][0], menus[menu_index][1]);
+
+            // Small intervals, so the menu can be interrupted quickly
+            int wait_time = 1000;
+            int step_time = 50;
+            for (int i = 0; i < wait_time / step_time; i++) {
+                if (key_pressed) break;
+                thread_sleep_for(step_time);
+            }
+
+            if (!key_pressed) {
+                menu_index = (menu_index + 1) % menu_count;
+            }
+        }
+    }
 }
